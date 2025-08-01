@@ -114,27 +114,25 @@ export const ContentGenerator = () => {
 
       if (inputError) throw inputError;
 
-      // Generate content using Gemini API (this would be handled by a Supabase Edge Function)
-      const prompt = `Create 4 variations of content to promote the "${selectedCard.card_name}" credit card.
-Platform: ${platform}
-Audience: ${audience}
-Language: ${language}
-Tone: ${tone}
+      // Generate content using Gemini API via Supabase Edge Function
+      const { data: geminiResponse, error: geminiError } = await supabase.functions.invoke('generate-content', {
+        body: {
+          cardName: selectedCard.card_name,
+          bankName: selectedCard.bank_name,
+          platform,
+          audience,
+          language,
+          tone,
+          customPrompt
+        }
+      });
 
-${customPrompt ? `Additional instruction: ${customPrompt}` : ''}
+      if (geminiError) throw geminiError;
 
-The content should be platform-appropriate, concise, and persuasive.`;
-
-      // For now, creating mock content - you'll need to implement the Gemini API call in a Supabase Edge Function
-      const mockContent = [
-        `🎯 Exclusive ${selectedCard.card_name} offer! Perfect for ${audience.toLowerCase()}. ${tone === 'exciting' ? '🚀' : ''}`,
-        `Looking for a great credit card? The ${selectedCard.card_name} from ${selectedCard.bank_name} is exactly what you need!`,
-        `${tone === 'friendly' ? 'Hey there!' : 'Attention:'} Just discovered the amazing benefits of ${selectedCard.card_name}. Worth checking out!`,
-        `${selectedCard.card_name} review: This card offers incredible value. Here's why it's perfect for your needs...`
-      ];
+      const variations = geminiResponse.variations || [];
 
       // Store generated content
-      const contentPromises = mockContent.map(async (content, index) => {
+      const contentPromises = variations.map(async (content: string, index: number) => {
         const { data, error } = await supabase
           .from("ai_outputs")
           .insert({
